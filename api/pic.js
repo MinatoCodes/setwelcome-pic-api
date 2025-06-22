@@ -43,9 +43,9 @@ app.get('/api/pic', async (req, res) => {
     ctx.drawImage(bg, 0, 0);
 
     // ==== Avatar Top-Center ====
-    const avatarSize = 130;
+    const avatarSize = 200;
     const avatarX = (canvas.width - avatarSize) / 2;
-    const avatarY = 50;
+    const avatarY = 70;
 
     ctx.save();
     ctx.beginPath();
@@ -58,24 +58,24 @@ app.get('/api/pic', async (req, res) => {
     // === Common Text Style ===
     ctx.fillStyle = 'white';
     ctx.strokeStyle = 'black';
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 4;
 
     // === Username ===
-    ctx.font = 'bold 52px Poppins';
+    ctx.font = 'bold 44px Poppins';
     let text = name;
     let width = ctx.measureText(text).width;
     ctx.strokeText(text, (canvas.width - width) / 2, avatarY + avatarSize + 60);
     ctx.fillText(text, (canvas.width - width) / 2, avatarY + avatarSize + 60);
 
     // === Group Chat Name ===
-    ctx.font = 'bold 40px Poppins';
+    ctx.font = 'bold 35px Poppins';
     text = `Group Chat: ${gcname}`;
     width = ctx.measureText(text).width;
     ctx.strokeText(text, (canvas.width - width) / 2, avatarY + avatarSize + 120);
     ctx.fillText(text, (canvas.width - width) / 2, avatarY + avatarSize + 120);
 
     // === Final Sentence ===
-    ctx.font = 'bold 36px Poppins';
+    ctx.font = 'bold 30px Poppins';
     text = `You are ${num} member of this group`;
     width = ctx.measureText(text).width;
     ctx.strokeText(text, (canvas.width - width) / 2, canvas.height - 60);
