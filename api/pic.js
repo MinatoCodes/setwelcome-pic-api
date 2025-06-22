@@ -9,28 +9,23 @@ import crypto from "crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Register the font - place Poppins-Bold.ttf in your project root
+// Register Poppins-Bold font (place in root)
 registerFont(path.join(__dirname, "..", "Poppins-Bold.ttf"), { family: "Poppins" });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve generated images statically
 app.use("/images", express.static(path.join(__dirname, "..", "images")));
 
 app.get("/api/pic", async (req, res) => {
   const { url, num, name, gcname } = req.query;
   if (!url || !num || !name || !gcname) {
-    return res
-      .status(400)
-      .json({ success: false, error: "Missing url, num, name, or gcname" });
+    return res.status(400).json({ success: false, error: "Missing url, num, name, or gcname" });
   }
 
   try {
-    // Background image URL (your provided bg)
     const bgUrl = "https://i.ibb.co/sdLf3wZF/image.jpg";
 
-    // Fetch images concurrently
     const [bgResp, avatarResp] = await Promise.all([
       axios.get(bgUrl, { responseType: "arraybuffer" }),
       axios.get(url, { responseType: "arraybuffer" }),
@@ -42,11 +37,10 @@ app.get("/api/pic", async (req, res) => {
     const canvas = createCanvas(bg.width, bg.height);
     const ctx = canvas.getContext("2d");
 
-    // Draw background
     ctx.drawImage(bg, 0, 0);
 
-    // Draw circular avatar top center
-    const avatarSize = 130;
+    // Avatar (increased size)
+    const avatarSize = 180;
     const avatarX = (canvas.width - avatarSize) / 2;
     const avatarY = 50;
 
@@ -69,31 +63,31 @@ app.get("/api/pic", async (req, res) => {
     ctx.strokeStyle = "black";
     ctx.lineWidth = 6;
 
-    // Username - bold 52px, centered under avatar
+    // Username
     ctx.font = "bold 52px Poppins";
     let text = name;
     let textWidth = ctx.measureText(text).width;
-    const usernameY = avatarY + avatarSize + 60;
+    const usernameY = avatarY + avatarSize + 50; // Reduced spacing here
     ctx.strokeText(text, (canvas.width - textWidth) / 2, usernameY);
     ctx.fillText(text, (canvas.width - textWidth) / 2, usernameY);
 
-    // Group chat name - bold 40px, centered under username
+    // GC name
     ctx.font = "bold 40px Poppins";
     text = gcname;
     textWidth = ctx.measureText(text).width;
-    const gcY = usernameY + 60;
+    const gcY = usernameY + 55; // Reduced spacing
     ctx.strokeText(text, (canvas.width - textWidth) / 2, gcY);
     ctx.fillText(text, (canvas.width - textWidth) / 2, gcY);
 
-    // Final line - bold 44px, centered at bottom
+    // Final line
     ctx.font = "bold 44px Poppins";
     text = `You are ${num} member of this group`;
     textWidth = ctx.measureText(text).width;
-    const finalY = canvas.height - 60;
+    const finalY = gcY + 50; // Closer spacing
     ctx.strokeText(text, (canvas.width - textWidth) / 2, finalY);
     ctx.fillText(text, (canvas.width - textWidth) / 2, finalY);
 
-    // Save to file and return URL
+    // Save image
     const outDir = path.join(__dirname, "..", "images");
     if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
 
