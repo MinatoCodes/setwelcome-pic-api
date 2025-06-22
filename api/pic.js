@@ -1,17 +1,20 @@
-const express = require('express');
-const { createCanvas, loadImage, registerFont } = require('canvas');
-const axios = require('axios');
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
+import express from 'express';
+import { createCanvas, loadImage, registerFont } from 'canvas';
+import axios from 'axios';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+
+// Fix __dirname in ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Serve generated images statically from /images
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
-// Register font (make sure you have Poppins-Bold.ttf in project root)
 registerFont(path.join(__dirname, 'Poppins-Bold.ttf'), { family: 'Poppins' });
 
 app.get('/api/pic', async (req, res) => {
@@ -79,17 +82,14 @@ app.get('/api/pic', async (req, res) => {
       fs.mkdirSync(imagesDir);
     }
 
-    // Generate unique filename
     const fileName = crypto.randomBytes(16).toString('hex') + '.png';
     const filePath = path.join(imagesDir, fileName);
 
-    // Save image to file
     const out = fs.createWriteStream(filePath);
     const stream = canvas.createPNGStream();
     stream.pipe(out);
 
     out.on('finish', () => {
-      // Respond with JSON including accessible URL
       res.json({
         success: true,
         url: `${req.protocol}://${req.get('host')}/images/${fileName}`
@@ -108,5 +108,6 @@ app.get('/api/pic', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server started on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
+  
