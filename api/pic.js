@@ -1,16 +1,24 @@
+const express = require('express');
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const axios = require('axios');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 
-// Register the Poppins font locally from project folder (for Vercel)
-registerFont(path.resolve(__dirname, 'Poppins-Bold.ttf'), { family: 'Poppins' });
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-export default async function handler(req, res) {
+// Serve generated images statically from /images
+app.use('/images', express.static(path.join(__dirname, 'images')));
+
+// Register font (make sure you have Poppins-Bold.ttf in project root)
+registerFont(path.join(__dirname, 'Poppins-Bold.ttf'), { family: 'Poppins' });
+
+app.get('/api/pic', async (req, res) => {
   const { url, num, name, gcname } = req.query;
 
   if (!url || !num || !name || !gcname) {
-    return res.status(400).json({ error: "Missing 'url', 'num', 'name', or 'gcname'." });
+    return res.status(400).json({ success: false, error: "Missing 'url', 'num', 'name', or 'gcname'." });
   }
 
   try {
@@ -65,12 +73,40 @@ export default async function handler(req, res) {
     ctx.strokeText(`Group Chat: ${gcname}`, baseX, currentY);
     ctx.fillText(`Group Chat: ${gcname}`, baseX, currentY);
 
-    res.setHeader('Content-Type', 'image/png');
-    canvas.createPNGStream().pipe(res);
+    // Create images folder if not exists
+    const imagesDir = path.join(__dirname, 'images');
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir);
+    }
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Image generation failed', details: error.message });
+    // Generate unique filename
+    const fileName = crypto.randomBytes(16).toString('hex') + '.png';
+    const filePath = path.join(imagesDir, fileName);
+
+    // Save image to file
+    const out = fs.createWriteStream(filePath);
+    const stream = canvas.createPNGStream();
+    stream.pipe(out);
+
+    out.on('finish', () => {
+      // Respond with JSON including accessible URL
+      res.json({
+        success: true,
+        url: `${req.protocol}://${req.get('host')}/images/${fileName}`
+      });
+    });
+
+    out.on('error', (err) => {
+      console.error(err);
+      res.status(500).json({ success: false, error: 'Failed to save image' });
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
   }
-      }
-      
+});
+
+app.listen(PORT, () => {
+  console.log(`Server started on http://localhost:${PORT}`);
+});
