@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Register font (Poppins Bold)
-registerFont(path.join(__dirname, '..', 'Poppins-Bold.ttf'), { family: 'Poppins' });
+registerFont(path.join(__dirname, '..', 'api/Poppins-Bold.ttf'), { family: 'Poppins' });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
