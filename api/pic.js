@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Register font (Poppins Bold)
+// Register the exact font
 registerFont(path.join(__dirname, '..', 'Poppins-Bold.ttf'), { family: 'Poppins' });
 
 const app = express();
@@ -26,74 +26,66 @@ app.get('/api/pic', async (req, res) => {
   }
 
   try {
-    // Use your background image URL (different bg)
-    const baseImageUrl = 'https://i.ibb.co/sdLf3wZF/image.jpg';
+    const backgroundURL = 'https://i.ibb.co/sdLf3wZF/image.jpg'; // your bg
 
-    const [bgRes, overlayRes] = await Promise.all([
-      axios.get(baseImageUrl, { responseType: 'arraybuffer' }),
-      axios.get(url, { responseType: 'arraybuffer' }),
+    const [bgRes, avatarRes] = await Promise.all([
+      axios.get(backgroundURL, { responseType: 'arraybuffer' }),
+      axios.get(url, { responseType: 'arraybuffer' })
     ]);
 
-    const bgImage = await loadImage(Buffer.from(bgRes.data));
-    const avatarImage = await loadImage(Buffer.from(overlayRes.data));
+    const bg = await loadImage(Buffer.from(bgRes.data));
+    const avatar = await loadImage(Buffer.from(avatarRes.data));
 
-    const canvas = createCanvas(bgImage.width, bgImage.height);
+    const canvas = createCanvas(bg.width, bg.height);
     const ctx = canvas.getContext('2d');
 
     // Draw background
-    ctx.drawImage(bgImage, 0, 0);
+    ctx.drawImage(bg, 0, 0);
 
-    // === Avatar circle and placement ===
-    // EXACT same position & size as example image:
-    // Example avatar position approx top right corner, margin ~38px from right, ~40px from top, size 130x130px
+    // === Avatar Circle ===
     const avatarSize = 130;
-    const avatarX = canvas.width - avatarSize - 38; // right margin
-    const avatarY = 40; // top margin
+    const avatarX = canvas.width - avatarSize - 35;
+    const avatarY = 45;
 
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(avatarImage, avatarX, avatarY, avatarSize, avatarSize);
+    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // === Text placement exactly like example ===
-
-    // Number: font size ~150px bold Poppins, white fill with black stroke thickness 8
-    const numberX = 60;
-    const numberY = 650;
-
-    ctx.font = 'bold 150px Poppins';
+    // === Styling ===
     ctx.fillStyle = 'white';
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 8;
+
+    // === Number ===
+    ctx.font = 'bold 148px Poppins';
+    const numberX = 60;
+    const numberY = 640;
     ctx.strokeText(num, numberX, numberY);
     ctx.fillText(num, numberX, numberY);
 
-    // Username: font size 52px bold Poppins, white fill with black stroke, positioned below number with spacing 80px
+    // === Username ===
+    ctx.font = 'bold 52px Poppins';
     const nameX = 60;
     const nameY = numberY + 80;
-
-    ctx.font = 'bold 52px Poppins';
     ctx.strokeText(name, nameX, nameY);
     ctx.fillText(name, nameX, nameY);
 
-    // Group Chat Name: font size 38px bold Poppins, white fill with black stroke, positioned below username with spacing 65px
-    const gcX = 60;
-    const gcY = nameY + 65;
-
+    // === Group Chat Name ===
     ctx.font = 'bold 38px Poppins';
-    const gcText = `Group Chat: ${gcname}`;
-    ctx.strokeText(gcText, gcX, gcY);
-    ctx.fillText(gcText, gcX, gcY);
+    const gcY = nameY + 65;
+    ctx.strokeText(`Group Chat: ${gcname}`, nameX, gcY);
+    ctx.fillText(`Group Chat: ${gcname}`, nameX, gcY);
 
-    // === Save image and respond ===
+    // === Save File ===
     const imagesDir = path.join(__dirname, '..', 'images');
     if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir);
 
-    const fileName = crypto.randomBytes(16).toString('hex') + '.png';
-    const filePath = path.join(imagesDir, fileName);
+    const filename = crypto.randomBytes(16).toString('hex') + '.png';
+    const filePath = path.join(imagesDir, filename);
 
     const out = fs.createWriteStream(filePath);
     const stream = canvas.createPNGStream();
@@ -102,22 +94,21 @@ app.get('/api/pic', async (req, res) => {
     out.on('finish', () => {
       res.json({
         success: true,
-        url: `${req.protocol}://${req.get('host')}/images/${fileName}`
+        url: `${req.protocol}://${req.get('host')}/images/${filename}`
       });
     });
 
-    out.on('error', (err) => {
-      console.error(err);
+    out.on('error', () => {
       res.status(500).json({ success: false, error: 'Failed to save image' });
     });
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: error.message });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
-  
+             
