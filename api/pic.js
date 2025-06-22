@@ -1,107 +1,125 @@
-import express from 'express';
-import { createCanvas, loadImage, registerFont } from 'canvas';
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import crypto from 'crypto';
+import express from "express";
+import { createCanvas, loadImage, registerFont } from "canvas";
+import axios from "axios";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import crypto from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load font (must be in root)
-registerFont(path.join(__dirname, '..', 'Poppins-Bold.ttf'), {
-  family: 'Poppins'
-});
+// Register the font - place Poppins-Bold.ttf in your project root
+registerFont(path.join(__dirname, "..", "Poppins-Bold.ttf"), { family: "Poppins" });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use('/images', express.static(path.join(__dirname, '..', 'images')));
+// Serve generated images statically
+app.use("/images", express.static(path.join(__dirname, "..", "images")));
 
-app.get('/api/pic', async (req, res) => {
+app.get("/api/pic", async (req, res) => {
   const { url, num, name, gcname } = req.query;
   if (!url || !num || !name || !gcname) {
-    return res.status(400).json({ success: false, error: 'Missing query params' });
+    return res
+      .status(400)
+      .json({ success: false, error: "Missing url, num, name, or gcname" });
   }
 
   try {
-    const bgUrl = 'https://i.ibb.co/sdLf3wZF/image.jpg';
+    // Background image URL (your provided bg)
+    const bgUrl = "https://i.ibb.co/sdLf3wZF/image.jpg";
 
-    const [bgImgData, avatarData] = await Promise.all([
-      axios.get(bgUrl, { responseType: 'arraybuffer' }),
-      axios.get(url, { responseType: 'arraybuffer' })
+    // Fetch images concurrently
+    const [bgResp, avatarResp] = await Promise.all([
+      axios.get(bgUrl, { responseType: "arraybuffer" }),
+      axios.get(url, { responseType: "arraybuffer" }),
     ]);
 
-    const bg = await loadImage(Buffer.from(bgImgData.data));
-    const avatar = await loadImage(Buffer.from(avatarData.data));
+    const bg = await loadImage(Buffer.from(bgResp.data));
+    const avatar = await loadImage(Buffer.from(avatarResp.data));
 
     const canvas = createCanvas(bg.width, bg.height);
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
 
     // Draw background
     ctx.drawImage(bg, 0, 0);
 
-    // ==== Avatar Top-Center ====
-    const avatarSize = 200;
+    // Draw circular avatar top center
+    const avatarSize = 130;
     const avatarX = (canvas.width - avatarSize) / 2;
-    const avatarY = 70;
+    const avatarY = 50;
 
     ctx.save();
     ctx.beginPath();
-    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.arc(
+      avatarX + avatarSize / 2,
+      avatarY + avatarSize / 2,
+      avatarSize / 2,
+      0,
+      Math.PI * 2
+    );
     ctx.closePath();
     ctx.clip();
     ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
 
-    // === Common Text Style ===
-    ctx.fillStyle = 'white';
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 4;
+    // Text styles
+    ctx.fillStyle = "white";
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 6;
 
-    // === Username ===
-    ctx.font = 'bold 44px Poppins';
+    // Username - bold 52px, centered under avatar
+    ctx.font = "bold 52px Poppins";
     let text = name;
-    let width = ctx.measureText(text).width;
-    ctx.strokeText(text, (canvas.width - width) / 2, avatarY + avatarSize + 60);
-    ctx.fillText(text, (canvas.width - width) / 2, avatarY + avatarSize + 60);
+    let textWidth = ctx.measureText(text).width;
+    const usernameY = avatarY + avatarSize + 60;
+    ctx.strokeText(text, (canvas.width - textWidth) / 2, usernameY);
+    ctx.fillText(text, (canvas.width - textWidth) / 2, usernameY);
 
-    // === Group Chat Name ===
-    ctx.font = 'bold 35px Poppins';
-    text = `Group Chat: ${gcname}`;
-    width = ctx.measureText(text).width;
-    ctx.strokeText(text, (canvas.width - width) / 2, avatarY + avatarSize + 120);
-    ctx.fillText(text, (canvas.width - width) / 2, avatarY + avatarSize + 120);
+    // Group chat name - bold 40px, centered under username
+    ctx.font = "bold 40px Poppins";
+    text = gcname;
+    textWidth = ctx.measureText(text).width;
+    const gcY = usernameY + 60;
+    ctx.strokeText(text, (canvas.width - textWidth) / 2, gcY);
+    ctx.fillText(text, (canvas.width - textWidth) / 2, gcY);
 
-    // === Final Sentence ===
-    ctx.font = 'bold 30px Poppins';
+    // Final line - bold 44px, centered at bottom
+    ctx.font = "bold 44px Poppins";
     text = `You are ${num} member of this group`;
-    width = ctx.measureText(text).width;
-    ctx.strokeText(text, (canvas.width - width) / 2, canvas.height - 60);
-    ctx.fillText(text, (canvas.width - width) / 2, canvas.height - 60);
+    textWidth = ctx.measureText(text).width;
+    const finalY = canvas.height - 60;
+    ctx.strokeText(text, (canvas.width - textWidth) / 2, finalY);
+    ctx.fillText(text, (canvas.width - textWidth) / 2, finalY);
 
-    // Save image
-    const dir = path.join(__dirname, '..', 'images');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    // Save to file and return URL
+    const outDir = path.join(__dirname, "..", "images");
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
 
-    const filename = crypto.randomBytes(8).toString('hex') + '.png';
-    const filePath = path.join(dir, filename);
+    const filename = crypto.randomBytes(8).toString("hex") + ".png";
+    const filePath = path.join(outDir, filename);
 
     const out = fs.createWriteStream(filePath);
-    canvas.createPNGStream().pipe(out);
-    out.on('finish', () => {
+    const stream = canvas.createPNGStream();
+    stream.pipe(out);
+
+    out.on("finish", () => {
       res.json({
         success: true,
-        url: `${req.protocol}://${req.get('host')}/images/${filename}`
+        url: `${req.protocol}://${req.get("host")}/images/${filename}`,
       });
     });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+
+    out.on("error", (err) => {
+      res.status(500).json({ success: false, error: err.message });
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Running on http://localhost:${PORT}`);
+  console.log(`Server started on http://localhost:${PORT}`);
 });
-                                 
+    
